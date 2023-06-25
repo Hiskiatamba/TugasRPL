@@ -1,0 +1,110 @@
+<?php
+class Barangkeluar_m extends CI_Model
+{
+    var $table = 'barangkeluar'; //nama tabel dari database
+    var $column_order = array(null, 'tanggal_keluar', 'kode_barang','nama_barang', 'nama_kategori', 'jumlah_bk', null); //Sesuaikan dengan field
+    var $column_search = array('tanggal_keluar','nama_barang','nama_kategori','barangkeluar.kode_barang','barangkeluar.kode_kategori'); //field yang diizin untuk pencarian 
+    var $order = array('' => 'asc'); // default order 
+
+    private function _get_datatables_query()
+    {
+
+        $this->db->select('*');
+        $this->db->from('barangkeluar');
+        $this->db->join('barang', 'barang.kode_barang = barangkeluar.kode_barang', 'inner');
+        $this->db->join('kategori', 'kategori.kode_kategori = barangkeluar.kode_kategori', 'inner');
+
+        $i = 0;
+
+        foreach ($this->column_search as $item) // looping awal
+        {
+            if ($_POST['search']['value']) // jika datatable mengirimkan pencarian dengan metode POST
+            {
+
+                if ($i === 0) // looping awal
+                {
+                    $this->db->group_start();
+                    $this->db->like($item, $_POST['search']['value']);
+                } else {
+                    $this->db->or_like($item, $_POST['search']['value']);
+                }
+
+                if (count($this->column_search) - 1 == $i)
+                    $this->db->group_end();
+            }
+            $i++;
+        }
+
+        if (isset($_POST['order'])) {
+            $this->db->order_by($this->column_order[$_POST['order']['0']['column']], $_POST['order']['0']['dir']);
+        } else if (isset($this->order)) {
+            $order = $this->order;
+            $this->db->order_by(key($order), $order[key($order)]);
+        }
+    }
+
+    function get_datatables()
+    {
+        $this->_get_datatables_query();
+        if ($_POST['length'] != -1)
+            $this->db->limit($_POST['length'], $_POST['start']);
+        $query = $this->db->get();
+        return $query->result();
+    }
+
+    function count_filtered()
+    {
+        $this->_get_datatables_query();
+        $query = $this->db->get();
+        return $query->num_rows();
+    }
+
+    public function count_all()
+    {
+        $this->db->select('*');
+        $this->db->from('barangkeluar');
+        $this->db->join('barang', 'barang.kode_barang = barangkeluar.kode_barang', 'inner');
+        $this->db->join('kategori', 'kategori.kode_kategori = barangkeluar.kode_kategori', 'inner');
+        return $this->db->count_all_results();
+    }
+
+    public function ambildata_barang()
+    {
+        return $this->db->get('barang');
+    }
+
+    public function ambildata_selectbarang($id_barang){
+        $this->db->select('*');
+        $this->db->from('barang');
+        $this->db->join('kategori', 'kategori.kode_kategori = barang.kode_kategori', 'inner');
+        $this->db->where('kode_barang', $id_barang);
+        $query = $this->db->get();
+        return $query;
+    }
+
+    public function simpandatabarang_keluar($tanggal_keluar,$kode_barang,$kode_kategori,$jumlah_bk)
+    {
+        $simpan =   [
+            'tanggal_keluar' => $tanggal_keluar,
+            'kode_barang'   => $kode_barang,
+            'kode_kategori' => $kode_kategori,
+            'jumlah_bk'     => $jumlah_bk
+        ];
+        $this->db->insert('barangkeluar', $simpan);
+    }
+
+    public function ambildata($kode_barang)
+    {
+        $this->db->select('*');
+        $this->db->from('barang');
+        $this->db->join('kategori', 'kategori.kode_kategori = barang.kode_kategori', 'inner');
+        $this->db->where('kode_barang', $kode_barang);
+        $query = $this->db->get();
+        return $query;
+    }
+
+    public function hapus_data_barang_keluar($id_bk)
+    {
+        return $this->db->delete('barangkeluar', ['id_bk' => $id_bk]);
+    }
+}
